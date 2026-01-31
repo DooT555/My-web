@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Nexus Core | Studio Final Ultra</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <style>
+        :root { --neon: #a29bfe; --bg: #050505; --accent-alpha: rgba(162, 155, 254, 0.1); --font-main: 80px; }
+        body { 
+            margin: 0; background: var(--bg); color: #fff; 
+            font-family: 'Inter', sans-serif; display: flex; 
+            flex-direction: column; align-items: center; justify-content: center; min-height: 100vh;
+            overflow: hidden;
+        }
+
+        /* HEADER & NAV */
+        .header-nav { 
+            position: absolute; top: 25px; width: 90%; 
+            display: flex; justify-content: space-between; align-items: center; z-index: 100;
+        }
+        
+        .profile-box { 
+            display: flex; align-items: center; gap: 10px; 
+            background: #5865F2; padding: 0 16px; height: 38px;
+            border-radius: 8px; cursor: pointer; transition: 0.3s;
+            text-decoration: none; border: none; box-shadow: 0 4px 14px rgba(88, 101, 242, 0.4);
+        }
+        .profile-box:hover { transform: scale(1.05); }
+
+        .p-avatar { width: 20px !important; height: 20px !important; filter: brightness(0) invert(1); }
+        .p-txt { font-size: 13px; font-weight: 700; color: #fff; }
+
+        .mode-selector { display: flex; gap: 8px; background: rgba(255,255,255,0.03); padding: 5px; border-radius: 25px; border: 1px solid rgba(255,255,255,0.05); }
+        .mode-btn { 
+            background: transparent; border: none; color: #555; padding: 8px 16px; 
+            border-radius: 20px; cursor: pointer; font-size: 11px; font-weight: 800; transition: 0.3s;
+        }
+        .mode-btn.active { background: #fff; color: #000; }
+
+        /* CANVAS AREA */
+        .canvas-container { position: relative; perspective: 1000px; }
+        #canvas-area { 
+            width: 450px; height: 450px; background: #000; 
+            display: flex; flex-direction: column; justify-content: center; align-items: center; 
+            position: relative; overflow: hidden; border-radius: 24px; 
+            border: 1px solid rgba(255,255,255,0.1); z-index: 2;
+            transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .glow-bg {
+            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            width: 130%; height: 130%; background: radial-gradient(circle, var(--accent-alpha) 0%, transparent 70%);
+            z-index: 1; pointer-events: none; transition: 0.6s;
+        }
+
+        .t-main { font-size: var(--font-main); font-weight: 900; text-transform: uppercase; position: relative; z-index: 5; line-height: 0.9; text-align: center; }
+        .t-sub { font-size: calc(var(--font-main) / 4.4); letter-spacing: 12px; text-transform: uppercase; color: var(--neon); font-weight: 700; z-index: 5; margin-top: 5px; }
+
+        /* CONTROLES */
+        .controls { display: flex; flex-direction: column; gap: 8px; width: 280px; padding: 20px; background: rgba(255,255,255,0.02); border-radius: 24px; border: 1px solid rgba(255,255,255,0.05); backdrop-filter: blur(10px); }
+        .input-group { display: flex; flex-direction: column; gap: 3px; }
+        label { font-size: 8px; color: #666; font-weight: 800; letter-spacing: 1px; text-transform: uppercase; }
+        
+        select, input[type="text"] { background: #111; border: 1px solid #222; padding: 8px; border-radius: 8px; color: #fff; font-size: 12px; outline: none; }
+        
+        input[type="range"] { appearance: none; background: #222; height: 4px; border-radius: 5px; margin: 5px 0; }
+        input[type="range"]::-webkit-slider-thumb { appearance: none; width: 12px; height: 12px; background: var(--neon); border-radius: 50%; cursor: pointer; box-shadow: 0 0 8px var(--neon); }
+
+        .btn-action { 
+            background: #fff; color: #000; border: none; padding: 14px; 
+            border-radius: 10px; font-weight: 900; cursor: pointer; 
+            margin-top: 5px; transition: 0.3s;
+        }
+        .btn-action:hover { transform: translateY(-2px); box-shadow: 0 5px 15px var(--accent-alpha); }
+
+        /* ANIMACIONES GIF */
+        .is-gif.anim-glitch .t-main::before, .is-gif.anim-glitch .t-main::after { content: attr(data-text); position: absolute; top: 0; left: 0; width: 100%; height: 100%; }
+        .is-gif.anim-glitch .t-main::before { left: 2px; text-shadow: -2px 0 #ff00c1; clip: rect(44px, 450px, 56px, 0); animation: glitch-1 2s infinite linear alternate-reverse; }
+        .is-gif.anim-glitch .t-main::after { left: -2px; text-shadow: -2px 0 #00fff9; clip: rect(44px, 450px, 56px, 0); animation: glitch-2 1s infinite linear alternate-reverse; }
+        
+        .is-gif.anim-rotate3d { animation: rotate3d 4s infinite linear; }
+        .is-gif.anim-zoom .t-main { animation: zoom-pulse 2s infinite ease-in-out; }
+        .is-gif.anim-typewriter .t-main { overflow: hidden; white-space: nowrap; border-right: 3px solid var(--neon); animation: typing 3.5s steps(10, end) infinite, blink .75s step-end infinite; }
+        .is-gif.anim-pulse .t-sub { animation: pulse-neon 1.5s infinite ease-in-out; }
+        .is-gif.anim-float .t-main { animation: float-move 3s infinite ease-in-out; }
+
+        @keyframes rotate3d { from { transform: rotateY(0deg); } to { transform: rotateY(360deg); } }
+        @keyframes zoom-pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.2); } }
+        @keyframes typing { from { width: 0 } to { width: 100% } }
+        @keyframes blink { from, to { border-color: transparent } 50% { border-color: var(--neon); } }
+        @keyframes glitch-1 { 0% { clip: rect(10px, 999px, 40px, 0); } 100% { clip: rect(70px, 999px, 90px, 0); } }
+        @keyframes glitch-2 { 0% { clip: rect(30px, 999px, 10px, 0); } 100% { clip: rect(10px, 999px, 50px, 0); } }
+        @keyframes pulse-neon { 0%, 100% { opacity: 1; text-shadow: 0 0 15px var(--neon); } 50% { opacity: 0.3; } }
+        @keyframes float-move { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-15px); } }
+
+        /* FOOTER */
+        .footer-rights { 
+            position: absolute; bottom: 20px; padding: 8px 20px; border-radius: 30px;
+            background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.05);
+            font-size: 9px; font-weight: 700; color: #555; text-transform: uppercase;
+        }
+        .footer-rights b { color: var(--neon); }
+
+        #anim-container { display: none; flex-direction: column; gap: 5px; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 10px; margin-top: 5px; }
+    </style>
+</head>
+<body>
+
+    <div class="header-nav">
+        <div class="mode-selector">
+            <button id="btn-logo" class="mode-btn active" onclick="setMode('logo')">ESTÁTICO</button>
+            <button id="btn-gif" class="mode-btn" onclick="setMode('gif')">MODO GIF</button>
+        </div>
+        
+        <a href="https://discord.com/login" target="_blank" class="profile-box">
+            <img class="p-avatar" src="https://cdn-icons-png.flaticon.com/512/2111/2111370.png">
+            <span class="p-txt">Nexus Acceso</span>
+        </a>
+    </div>
+
+    <div style="display: flex; gap: 40px; align-items: center;">
+        <div class="canvas-container">
+            <div id="canvas-area">
+                <div class="t-main" id="ot" data-text="NEXUS">NEXUS</div>
+                <div class="t-sub" id="ob">CORE</div>
+            </div>
+            <div class="glow-bg" id="glow"></div>
+            <div style="position: absolute; bottom: -22px; left: 0; font-size: 8px; color: #444; font-weight: 800;" id="res-val">450x450 PX (PREVIEW)</div>
+        </div>
+
+        <div class="controls">
+            <div class="input-group">
+                <label>Calidad Export (4K/8K)</label>
+                <select id="export-res">
+                    <option value="2">HD Estándar</option>
+                    <option value="4">4K Ultra HD</option>
+                    <option value="8">8K Calidad Extrema</option>
+                </select>
+            </div>
+
+            <div class="input-group">
+                <label>Tamaño de Fuente</label>
+                <input type="range" id="size-slider" min="20" max="200" value="80" oninput="up()">
+            </div>
+
+            <div class="input-group">
+                <label>Formato de Canvas</label>
+                <select id="canvas-res" onchange="changeCanvas()">
+                    <option value="1-1">Cuadrado (1:1)</option>
+                    <option value="16-9">Banner (16:9)</option>
+                    <option value="9-16">Vertical (9:16)</option>
+                </select>
+            </div>
+
+            <div id="anim-container">
+                <label>Efectos Animados</label>
+                <select id="anim-select" onchange="applyAnim()">
+                    <option value="anim-glitch">GLITCH DISTORTION</option>
+                    <option value="anim-rotate3d">ROTACIÓN 3D</option>
+                    <option value="anim-zoom">ZOOM INFINITO</option>
+                    <option value="anim-typewriter">ESCRITURA</option>
+                    <option value="anim-pulse">NEON PULSE</option>
+                    <option value="anim-float">FLOAT MOVEMENT</option>
+                </select>
+            </div>
+
+            <div class="input-group">
+                <label>Texto Principal</label>
+                <input type="text" id="it" value="NEXUS" oninput="up()">
+            </div>
+            <div class="input-group">
+                <label>Texto Secundario</label>
+                <input type="text" id="ib" value="CORE" oninput="up()">
+            </div>
+            <div class="input-group">
+                <label>Color de Acento</label>
+                <input type="color" id="ic" value="#a29bfe" oninput="up()" style="width: 100%; height: 30px; border: none; background: none; cursor: pointer;">
+            </div>
+            
+            <button class="btn-action" onclick="save()">DESCARGAR EN ALTA</button>
+        </div>
+    </div>
+
+    <div class="footer-rights">
+        © 2026 <b>Nexus Core Studio</b> • Derechos Reservados
+    </div>
+
+    <script>
+        let currentMode = 'logo';
+
+        function changeCanvas() {
+            const canvas = document.getElementById('canvas-area');
+            const res = document.getElementById('canvas-res').value;
+            if(res === '1-1') { canvas.style.width = '450px'; canvas.style.height = '450px'; }
+            else if(res === '16-9') { canvas.style.width = '550px'; canvas.style.height = '310px'; }
+            else if(res === '9-16') { canvas.style.width = '300px'; canvas.style.height = '533px'; }
+        }
+
+        function applyAnim() {
+            const canvas = document.getElementById('canvas-area');
+            const select = document.getElementById('anim-select');
+            canvas.className = ''; 
+            if(currentMode === 'gif') {
+                canvas.classList.add('is-gif');
+                canvas.classList.add(select.value);
+            }
+        }
+
+        function setMode(mode) {
+            currentMode = mode;
+            document.getElementById('anim-container').style.display = (mode === 'gif') ? 'flex' : 'none';
+            document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
+            document.getElementById('btn-' + mode).classList.add('active');
+            applyAnim();
+        }
+
+        function up() {
+            const t = document.getElementById('it').value;
+            const b = document.getElementById('ib').value;
+            const c = document.getElementById('ic').value;
+            const size = document.getElementById('size-slider').value;
+            document.getElementById('ot').innerText = t; 
+            document.getElementById('ot').setAttribute('data-text', t);
+            document.getElementById('ob').innerText = b; 
+            document.getElementById('ob').style.color = c;
+            document.documentElement.style.setProperty('--neon', c);
+            document.documentElement.style.setProperty('--accent-alpha', c + '1A');
+            document.documentElement.style.setProperty('--font-main', size + 'px');
+        }
+
+        function save() {
+            const btn = document.querySelector('.btn-action');
+            const quality = document.getElementById('export-res').value;
+            btn.innerText = `RENDERIZANDO ${quality}K...`;
+            
+            html2canvas(document.getElementById('canvas-area'), { 
+                backgroundColor: '#000', 
+                scale: quality,
+                logging: false,
+                useCORS: true
+            }).then(c => {
+                const a = document.createElement('a');
+                a.href = c.toDataURL("image/png");
+                a.download = `Nexus_Ultra_${quality}K.png`;
+                a.click();
+                btn.innerText = "DESCARGAR EN ALTA";
+            });
+        }
+    </script>
+</body>
+</html>
